@@ -77,6 +77,8 @@ help_info() {
         Display a countdown to the next episode
       -U, --update
         Update the script
+      --multi-download
+        Download multiple shows at once
     Some example usages:
       %s -q 720p banana fish
       %s --skip --skip-title \"one piece\" -S 2 one piece
@@ -84,7 +86,8 @@ help_info() {
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
       %s blue lock -e 5-6
       %s -e \"5 6\" blue lock
-    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+      %s --multi-download
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
 
@@ -92,6 +95,47 @@ version_info() {
     printf "%s\n" "$version_number"
     exit 0
 }
+
+download_multiple_shows() {
+    printf "Enter anime titles to download (one per line, press Ctrl+D when done):\n"
+    shows=$(cat)
+    
+    printf "Enter the number of episodes to download for each show:\n"
+    read -r num_episodes
+
+    for show in $shows; do
+        query=$(printf "%s" "$show" | sed "s| |+|g")
+        anime_list=$(search_anime "$query")
+        
+        if [ -z "$anime_list" ]; then
+            printf "No results found for: %s\n" "$show"
+            continue
+        fi
+        
+        result=$(printf "%s" "$anime_list" | head -n 1)
+        title=$(printf "%s" "$result" | cut -f2)
+        id=$(printf "%s" "$result" | cut -f1)
+        ep_list=$(episodes_list "$id")
+        
+        printf "Downloading %s episodes of: %s\n" "$num_episodes" "$title"
+        
+        for i in $(seq 1 "$num_episodes"); do
+            ep_no=$i
+            get_episode_url
+            printf "Downloading episode %s...\n" "$ep_no"
+            download "$episode" "${title}_Episode_${ep_no}"
+        done
+    done
+    
+    printf "All downloads completed.\n"
+}
+
+# Add this case to the main loop in the script
+        --multi-download)
+            player_function="download"
+            download_multiple_shows
+            exit 0
+            ;;
 
 update_script() {
     update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
